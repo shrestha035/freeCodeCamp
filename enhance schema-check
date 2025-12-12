@@ -1,0 +1,60 @@
+//! Check the records on the database matches the Prisma schema
+//!
+//! This script should be run before any deployments with Exam schema changes.
+//! WARNING: This script queries every single record in the `Env<>` collections.
+
+import { PrismaClient } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library.js';
+import { MONGOHQ_URL } from '../../../src/utils/env.js';
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: MONGOHQ_URL
+    }
+  }
+});
+
+async function main() {
+  console.log('\n🔍 Checking database → Prisma schema consistency...\n');
+  console.time('Schema Check Duration');
+
+  await prisma.$connect();
+
+  try {
+    const examEnvironmentExam = await prisma.examEnvironmentExam.findMany();
+    const examEnvironmentGeneratedExam =
+      await prisma.examEnvironmentGeneratedExam.findMany();
+    const examEnvironmentExamAttempt =
+      await prisma.examEnvironmentExamAttempt.findMany();
+
+    console.log('Number of exams:', examEnvironmentExam.length);
+    console.log(
+      'Number of generated exams:',
+      examEnvironmentGeneratedExam.length
+    );
+    console.log('Number of exam attempts:', examEnvironmentExamAttempt.length);
+
+    const total =
+      examEnvironmentExam.length +
+      examEnvironmentGeneratedExam.length +
+      examEnvironmentExamAttempt.length;
+
+    console.log('\nTotal records checked:', total);
+
+    console.log('\nSUCCESS! The database schema matches the Prisma schema.');
+  } catch (error) {
+    if (error instanceof PrismaClientKnownRequestError) {
+      console.error('\n❌ Prisma error detected:');
+      console.error(error.message);
+      console.info('\nCHECK DATABASE SCHEMA!');
+    } else {
+      console.error('\n❌ Unexpected error occurred:');
+      console.error(error);
+    }
+  }
+
+  console.timeEnd('Schema Check Duration');
+}
+
+void main();
